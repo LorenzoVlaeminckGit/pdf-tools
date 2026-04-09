@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { FileUp, FileText, Settings2, Download, Loader2, RefreshCw, AlertCircle, X, CheckCircle } from 'lucide-react';
+import { FileUp, FileText, Settings2, Download, Loader2, RefreshCw, AlertCircle, X, CheckCircle, Zap } from 'lucide-react';
 import { resizePdf, PAGE_SIZES, PageSize, Orientation } from './lib/pdf';
 import { cn } from './lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -15,6 +15,8 @@ export default function App() {
   const [files, setFiles] = useState<File[]>([]);
   const [targetSize, setTargetSize] = useState<PageSize>('A4');
   const [orientation, setOrientation] = useState<Orientation>('portrait');
+  const [compress, setCompress] = useState(false);
+  const [compressionQuality, setCompressionQuality] = useState(0.7);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processedFiles, setProcessedFiles] = useState<ProcessedFile[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +49,7 @@ export default function App() {
       
       const results: ProcessedFile[] = [];
       for (const file of files) {
-        const resizedBlob = await resizePdf(file, targetSize, orientation);
+        const resizedBlob = await resizePdf(file, targetSize, orientation, compress, compressionQuality);
         results.push({
           originalName: file.name,
           url: URL.createObjectURL(resizedBlob),
@@ -178,7 +180,7 @@ export default function App() {
                 </div>
 
                 {/* Settings Grid */}
-                <div className="grid md:grid-cols-2 gap-6 mb-8">
+                <div className="grid md:grid-cols-2 gap-6 mb-6">
                   <div className="space-y-3">
                     <label className="flex items-center text-sm font-medium text-zinc-700">
                       <Settings2 className="w-4 h-4 mr-2 text-zinc-400" />
@@ -230,6 +232,53 @@ export default function App() {
                       </button>
                     </div>
                   </div>
+                </div>
+
+                {/* Compression Toggle */}
+                <div className="mb-8 p-4 bg-zinc-50 rounded-xl border border-zinc-200">
+                  <label className="flex items-start space-x-3 cursor-pointer">
+                    <div className="flex items-center h-5">
+                      <input
+                        type="checkbox"
+                        checked={compress}
+                        onChange={(e) => setCompress(e.target.checked)}
+                        disabled={isProcessing || processedFiles.length > 0}
+                        className="w-4 h-4 text-indigo-600 bg-white border-zinc-300 rounded focus:ring-indigo-500 focus:ring-2 disabled:opacity-50"
+                      />
+                    </div>
+                    <div className="flex flex-col w-full">
+                      <span className="text-sm font-medium text-zinc-900 flex items-center">
+                        <Zap className="w-4 h-4 mr-1.5 text-amber-500" />
+                        Compress PDF (Reduce File Size)
+                      </span>
+                      <span className="text-xs text-zinc-500 mt-1">
+                        Warning: This will convert the PDF to images, which may reduce text sharpness and remove selectable text/links. Use only if file size is a priority.
+                      </span>
+                      
+                      {compress && (
+                        <div className="mt-4 pt-4 border-t border-zinc-200">
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="text-sm font-medium text-zinc-700">Compression Quality</label>
+                            <span className="text-xs font-medium text-zinc-500">{Math.round(compressionQuality * 100)}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0.1"
+                            max="1.0"
+                            step="0.1"
+                            value={compressionQuality}
+                            onChange={(e) => setCompressionQuality(parseFloat(e.target.value))}
+                            disabled={isProcessing || processedFiles.length > 0}
+                            className="w-full accent-indigo-600"
+                          />
+                          <div className="flex justify-between text-xs text-zinc-400 mt-1">
+                            <span>Smaller File</span>
+                            <span>Better Quality</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </label>
                 </div>
 
                 {/* Error Message */}
